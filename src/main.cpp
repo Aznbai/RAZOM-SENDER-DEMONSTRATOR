@@ -1,13 +1,9 @@
 // ----------------------------------------------------------------------------
-// ESP-NOW network + WiFi gateway to the Internet
+// RAZOM ESP-NOW  MVP SENDER
 // ----------------------------------------------------------------------------
-// ESP-NOW senders
-// THANKS RO M1CR0LAB FOR CORRECT GATEWAY IMPEMENTATION
-// more here https://github.com/m1cr0lab-esp32/esp-now-network-and-wifi-gateway
-// ----------------------------------------------------------------------------
-// this ESP-NOW sender sketch allows for reliable packet delivery to receiver, which itself is connected to some network.
+// This ESP-NOW sender sketch allows for reliable packet delivery to the Razom receiver, which acts as a gateway, and is itself connected to a wifi network and produces MIDI output.
 //
-// when working with barebone ESP32-WROOM module: avoid using default I2C pins on  ESP32:
+// When working with barebone ESP32-WROOM modules like : avoid using default I2C pins on  ESP32:
 // baseboard pcbs unlike bigger dev board only work with external resistors an capacitors if default i2c pins are used during boot up
 //
 // in order for this sketch to work on a barebone module  make sure that SCL // SDA pins are connected as follows SDA on pin "IO18", SCL on pin "IO19"
@@ -18,6 +14,11 @@
 // green led is connected via 150R resistor to GPIO2
 //
 // notice that brownout detector is supressed in order to increase compatibility with various ESP32 ESP-WROOM-32 modules
+// ----------------------------------------------------------------------------
+// THANKS RO M1CR0LAB FOR CORRECT GATEWAY SETUP IMPEMENTATION
+// more here https://github.com/m1cr0lab-esp32/esp-now-network-and-wifi-gateway
+// ----------------------------------------------------------------------------
+//
 #include "soc/soc.h"          //for supression of brownout detector
 #include "soc/rtc_cntl_reg.h" //for supression of brownout detector
 
@@ -69,7 +70,7 @@ struct_message dataObj; // Create an instance of struct_message to hold current 
 MPU6050 mpu(Wire);
 //
 esp_now_peer_info_t peerInterface;
-
+//
 #include "initFunctions.h"
 #include "MPUfuctions.h"
 #include "buttonFuctions.h"
@@ -79,16 +80,18 @@ void setup()
 {
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0); //    supression of brownout detector
   dataObj.id = NODE_ID;
-  //
   // Wire.begin(); // SDA SCL DEFAULT SETUP
   Wire.begin(18, 19); // SDA on pin "IO18", SCL on pin "IO19"
-
+                      //^,
   Serial.begin(115200);
   // delay(2000);
-  //
   ledInit();
   buttonInit();
   MPUinit();
+  MPUcalibrate();
+  delay(250);
+  mpu.update();
+  delay(250);
   MPUcalibrate();
   initWiFi();
   initEspNow();
@@ -97,7 +100,7 @@ void setup()
 
 void loop()
 {
-
+  mpu.update(); // experimental mode: increase update rate. Extracted from the MPUgetData function.
   if (millis() - timer > sendDelay)
   {
     timer = millis();
